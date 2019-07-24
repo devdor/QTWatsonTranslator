@@ -19,12 +19,13 @@ private:
     Ui::MainWindow *ui;
 
     QMenu *fileMenu, *helpMenu;
-    QAction *appNewAct, *appExitAct, *appAboutAct;
+    QAction *appNewAct, *appSettingsAct, *appExitAct, *appAboutAct;
 
     void createActions();
     void createMenus();
 
     void fileAppNew();
+    void fileAppSettings();
     void fileAppAbout();
     void fileAppExit();
 };

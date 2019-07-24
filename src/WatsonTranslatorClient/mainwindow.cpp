@@ -1,6 +1,7 @@
 #include "QDebug"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "app_settings_dialog.h"
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -23,6 +24,10 @@ void MainWindow::createActions()
     this->appNewAct->setStatusTip(tr("Create a new file"));
     connect(this->appNewAct, &QAction::triggered, this, &MainWindow::fileAppNew);
 
+    this->appSettingsAct = new QAction(tr("&Settings"), this);
+    this->appSettingsAct->setStatusTip(tr("Application settings"));
+    connect(this->appSettingsAct, &QAction::triggered, this, &MainWindow::fileAppSettings);
+
     this->appExitAct = new QAction(tr("&Exit"), this);
     this->appExitAct->setShortcut(QKeySequence::Close);
     this->appExitAct->setStatusTip(tr("Exit application"));
@@ -37,17 +42,37 @@ void MainWindow::createMenus()
 {
     this->fileMenu = this->menuBar()->addMenu(tr("&File"));
     this->fileMenu->addAction(this->appNewAct);
+    this->fileMenu->addAction(this->appSettingsAct);
     this->fileMenu->addAction(this->appExitAct);
 
     this->helpMenu = this->menuBar()->addMenu(tr("Help"));
     this->helpMenu->addAction(this->appAboutAct);
 }
 
+void MainWindow::fileAppSettings()
+{
+    try
+    {
+        AppSettingsDialog *appSettingsDlg = new AppSettingsDialog(this);
+        appSettingsDlg->setWindowFlag(Qt::WindowType::Tool);
+        appSettingsDlg->setWindowTitle(tr("Login"));
+        appSettingsDlg->Init("TEST", nullptr, nullptr);
+        int dlgResult = appSettingsDlg->exec();
+        if(dlgResult == QDialog::Accepted)
+        {
+            qDebug() << "appSettingsDlg accepted";
+        }
+    }
+    catch (const std::exception& exc)
+    {
+        qDebug() << "EXCEPTION in fileAppSettings: " << exc.what() << endl;
+    }
+}
+
 void MainWindow::fileAppNew()
 {
     try
     {
-
     }
     catch (const std::exception& exc)
     {

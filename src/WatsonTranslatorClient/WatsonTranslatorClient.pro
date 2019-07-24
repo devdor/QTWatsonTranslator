@@ -25,13 +25,16 @@ DEFINES += QT_DEPRECATED_WARNINGS
 CONFIG += c++11
 
 SOURCES += \
+        app_settings_dialog.cpp \
         main.cpp \
         mainwindow.cpp
 
 HEADERS += \
+        app_settings_dialog.h \
         mainwindow.h
 
 FORMS += \
+        app_settings_dialog.ui \
         mainwindow.ui
 
 # Default rules for deployment.
