@@ -1,4 +1,4 @@
-#include "QDebug"
+#include <QDebug>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "app_settings_dialog.h"
@@ -7,6 +7,10 @@ MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
+    QCoreApplication::setOrganizationName("Acme");
+    QCoreApplication::setOrganizationDomain("local");
+    QCoreApplication::setApplicationName("WatsonTranslatorClient");
+
     ui->setupUi(this);
     this->createActions();
     this->createMenus();
@@ -53,13 +57,22 @@ void MainWindow::fileAppSettings()
 {
     try
     {
+        QSettings settings;
+
         AppSettingsDialog *appSettingsDlg = new AppSettingsDialog(this);
         appSettingsDlg->setWindowFlag(Qt::WindowType::Tool);
         appSettingsDlg->setWindowTitle(tr("Login"));
-        appSettingsDlg->Init("TEST", nullptr, nullptr);
+        appSettingsDlg->Init(
+                    settings.value("IBMSettings/ServiceUrl").toString(),
+                    settings.value("IBMSettings/VersionDate").toString(),
+                    settings.value("IBMSettings/AccessToken").toString());
+
         int dlgResult = appSettingsDlg->exec();
         if(dlgResult == QDialog::Accepted)
         {
+            settings.setValue("IBMSettings/ServiceUrl", appSettingsDlg->GetServiceUrl());
+            settings.setValue("IBMSettings/VersionDate", appSettingsDlg->GetVersionDate());
+            settings.setValue("IBMSettings/AccessToken", appSettingsDlg->GetAccessToken());
             qDebug() << "appSettingsDlg accepted";
         }
     }

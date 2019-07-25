@@ -13,11 +13,11 @@ AppSettingsDialog::~AppSettingsDialog()
     delete ui;
 }
 
-void AppSettingsDialog::Init(const QString &serviceUrl, const QString &accessToken, const QString &versionDate)
+void AppSettingsDialog::Init(const QString &serviceUrl, const QString &versionDate, const QString &accessToken)
 {
-    this->ui->lineEditServiceUrl->setText(serviceUrl);
-    this->ui->lineEditAccessToken->setText(accessToken);
+    this->ui->lineEditServiceUrl->setText(serviceUrl);    
     this->ui->lineEditVersionDate->setText(versionDate);
+    this->ui->lineEditAccessToken->setText(accessToken);
 }
 
 QString AppSettingsDialog::GetServiceUrl()

@@ -22,14 +22,14 @@ class AppSettingsDialog : public QDialog
 public:
     explicit AppSettingsDialog(QWidget *parent = nullptr);
     ~AppSettingsDialog();
-    void Init(const QString &serviceUrl, const QString &accessToken, const QString &versionDate);
+    void Init(const QString &serviceUrl, const QString &versionDate, const QString &accessToken);
 
     QString GetServiceUrl();
     QString GetAccessToken();
     QString GetVersionDate();
 private:
     Ui::AppSettingsDialog *ui;
-     void setUpGUI();
+    void setUpGUI();
 };
 
 #endif // APP_SETTINGS_H
