@@ -1,4 +1,6 @@
 #include <QDebug>
+#include <QMessageBox>
+#include <QtNetwork/QNetworkAccessManager>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "app_settings_dialog.h"
@@ -25,7 +27,8 @@ void MainWindow::createActions()
 {
     this->appNewAct = new QAction(tr("&New"), this);
     this->appNewAct->setShortcuts(QKeySequence::New);
-    this->appNewAct->setStatusTip(tr("Create a new file"));
+    this->appNewAct->setStatusTip(tr("Post a new request"));
+    this->appNewAct->setIcon(QIcon::fromTheme("document-new"));
     connect(this->appNewAct, &QAction::triggered, this, &MainWindow::fileAppNew);
 
     this->appSettingsAct = new QAction(tr("&Settings"), this);
@@ -51,6 +54,8 @@ void MainWindow::createMenus()
 
     this->helpMenu = this->menuBar()->addMenu(tr("Help"));
     this->helpMenu->addAction(this->appAboutAct);
+
+    ui->mainToolBar->addAction(this->appNewAct);
 }
 
 void MainWindow::fileAppSettings()
@@ -82,17 +87,6 @@ void MainWindow::fileAppSettings()
     }
 }
 
-void MainWindow::fileAppNew()
-{
-    try
-    {
-    }
-    catch (const std::exception& exc)
-    {
-        qDebug() << "EXCEPTION in fileAppNew: " << exc.what() << endl;
-    }
-}
-
 void MainWindow::fileAppExit()
 {
     try
@@ -109,10 +103,25 @@ void MainWindow::fileAppAbout()
 {
     try
     {
-
+        QMessageBox *dlg = new QMessageBox();
+        dlg->setWindowTitle("About " + QCoreApplication::applicationName() + "...");
+        dlg->setText(QCoreApplication::applicationName() + " version " + QCoreApplication::applicationVersion());
+        dlg->exec();
     }
     catch (const std::exception& exc)
     {
         qDebug() << "EXCEPTION in fileAppAbout: " << exc.what() << endl;
+    }
+}
+
+void MainWindow::fileAppNew()
+{
+    try
+    {
+
+    }
+    catch (const std::exception& exc)
+    {
+        qDebug() << "EXCEPTION in fileAppNew: " << exc.what() << endl;
     }
 }
