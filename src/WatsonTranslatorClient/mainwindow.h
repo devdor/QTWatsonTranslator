@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QSettings>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
 
 namespace Ui {
 class MainWindow;
@@ -28,7 +30,11 @@ private:
     void fileAppNew();
     void fileAppSettings();
     void fileAppAbout();
-    void fileAppExit();
+    void fileAppExit();    
+    void insertRow(const QString &text, const QString &translation);
+
+public slots:
+    void onRequestCompleted(QNetworkReply *rep);
 };
 
 #endif // MAINWINDOW_H

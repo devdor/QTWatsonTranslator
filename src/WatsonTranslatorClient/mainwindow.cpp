@@ -1,9 +1,12 @@
 #include <QDebug>
 #include <QMessageBox>
-#include <QtNetwork/QNetworkAccessManager>
+#include <QHttpMultiPart>
+#include <QNetworkRequest>
+#include <QUrlQuery>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "app_settings_dialog.h"
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -16,6 +19,12 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->setupUi(this);
     this->createActions();
     this->createMenus();
+
+    QStringList colHeaderList;
+    colHeaderList << "Created" << "Text" << "Translation";
+    ui->tableWidget->setColumnCount(3);
+    ui->tableWidget->setHorizontalHeaderLabels(colHeaderList);
+    ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
 }
 
 MainWindow::~MainWindow()
@@ -118,10 +127,64 @@ void MainWindow::fileAppNew()
 {
     try
     {
+        QString jsonString = "{\"text\":[\"hallo welt, dies ist ein test\"],\"model_id\":\"en-es\"}";
+        QByteArray postData = QByteArray::number(jsonString.size());
 
+        QNetworkAccessManager * manager = new QNetworkAccessManager(this);
+
+        QSettings settings;
+
+        QUrlQuery params;
+        params.addQueryItem("version", settings.value("IBMSettings/VersionDate").toString());
+
+        QUrl url(settings.value("IBMSettings/ServiceUrl").toString() + "/v3/translate?" + params.query());
+        QNetworkRequest request(url);
+
+        request.setRawHeader("Content-Type", "application/json");
+        request.setRawHeader("Content-Length", postData);
+        request.setRawHeader("x-watson-learning-opt-out", "true");
+
+        QString concatenated = "apikey:"+settings.value("IBMSettings/AccessToken").toString();
+        QByteArray data = concatenated.toLocal8Bit().toBase64();
+        QString headerData = "Basic " + data;
+        request.setRawHeader("Authorization", headerData.toLocal8Bit());
+
+        connect(manager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onRequestCompleted(QNetworkReply *)));
+        manager->post(request, jsonString.toUtf8());
     }
     catch (const std::exception& exc)
     {
         qDebug() << "EXCEPTION in fileAppNew: " << exc.what() << endl;
     }
+}
+
+void MainWindow::onRequestCompleted(QNetworkReply *rep)
+{
+    try
+    {
+        QByteArray bts = rep->readAll();
+        if(bts.length() > 0)
+        {
+            QString str(bts);
+            QMessageBox::information(this, QCoreApplication::applicationName(),str, "ok");
+            this->statusBar()->showMessage(QString("Received %1 bytes received").arg(bts.length()));
+        }
+        else
+        {
+            this->statusBar()->showMessage("Received empty response");
+        }
+    }
+    catch (const std::exception& exc)
+    {
+        qDebug() << "EXCEPTION in onRequestCompleted: " << exc.what() << endl;
+    }
+}
+
+void MainWindow::insertRow(const QString &text, const QString &translation)
+{
+    ui->tableWidget->insertRow(ui->tableWidget->rowCount());
+    int nRow = ui->tableWidget->rowCount() - 1;
+    ui->tableWidget->setItem(nRow, 0, new QTableWidgetItem(QDateTime::currentDateTime().time().toString()));
+    ui->tableWidget->setItem(nRow, 1, new QTableWidgetItem(text));
+    ui->tableWidget->setItem(nRow, 2, new QTableWidgetItem(translation));
 }
