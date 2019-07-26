@@ -6,6 +6,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QPair>
 
 namespace Ui {
 class MainWindow;
@@ -35,7 +36,9 @@ private:
     void insertRow(const QString &value, const QString &translation);
 
     void translate(const QString &value);
-    QStringList readLanguageList();
+
+    QVector<QPair<QString,QString>> m_languageList;
+    void readLanguageList();
     QString buildAuthorizationItem();
 
 public slots:

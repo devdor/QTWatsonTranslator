@@ -129,8 +129,10 @@ void MainWindow::fileAppNew()
 {
     try
     {
-        this->readLanguageList();
-        //this->translate("Pull requests let you tell others about changes you've pushed to a branch");
+        if(this->m_languageList.isEmpty())
+            this->readLanguageList();
+
+        this->translate("Pull requests let you tell others about changes you've pushed to a branch");
     }
     catch (const std::exception& exc)
     {
@@ -184,7 +186,7 @@ void MainWindow::onRequestCompleted(QNetworkReply *rep)
     }
 }
 
-QStringList MainWindow::readLanguageList()
+void MainWindow::readLanguageList()
 {
     QSettings settings;
 
@@ -199,7 +201,7 @@ QStringList MainWindow::readLanguageList()
     QNetworkAccessManager * manager = new QNetworkAccessManager(this);
     QNetworkReply *reply = manager->get(request);
 
-    QStringList languageList;
+    this->m_languageList.clear();
     connect(reply, &QNetworkReply::finished, [=]() {
 
         if(reply->error() == QNetworkReply::NoError)
@@ -207,17 +209,18 @@ QStringList MainWindow::readLanguageList()
             QByteArray bts = reply->readAll();
             if(bts.length() > 0)
             {
-                QString str(bts);
-
                 QJsonDocument jsonResponse = QJsonDocument::fromJson(bts);
                 QJsonObject jsonObject = jsonResponse.object();
                 QJsonArray jsonArray = jsonObject["languages"].toArray();
+
                 foreach (const QJsonValue & value, jsonArray)
                 {
                     QJsonObject obj = value.toObject();
+                    this->m_languageList.append(
+                                QPair<QString, QString>(
+                                    obj.value("language").toString(),
+                                    obj.value("name").toString()));
                 }
-
-                QMessageBox::information(this, QCoreApplication::applicationName(),str, "ok");
             }
         }
         else // handle error
@@ -225,8 +228,6 @@ QStringList MainWindow::readLanguageList()
           qDebug() << reply->errorString();
         }
     });
-
-    return languageList;
 }
 
 QString MainWindow::buildAuthorizationItem()
