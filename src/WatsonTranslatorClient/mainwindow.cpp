@@ -127,7 +127,7 @@ void MainWindow::fileAppNew()
 {
     try
     {
-        QString jsonString = "{\"text\":[\"hallo welt, dies ist ein test\"],\"model_id\":\"en-es\"}";
+        QString jsonString = "{\"text\":[\"hallo welt\"],\"model_id\":\"en-es\"}";
         QByteArray postData = QByteArray::number(jsonString.size());
 
         QNetworkAccessManager * manager = new QNetworkAccessManager(this);
