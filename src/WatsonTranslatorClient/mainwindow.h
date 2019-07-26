@@ -5,6 +5,7 @@
 #include <QSettings>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
+#include <QNetworkRequest>
 
 namespace Ui {
 class MainWindow;
@@ -31,7 +32,11 @@ private:
     void fileAppSettings();
     void fileAppAbout();
     void fileAppExit();    
-    void insertRow(const QString &text, const QString &translation);
+    void insertRow(const QString &value, const QString &translation);
+
+    void translate(const QString &value);
+    QStringList readLanguageList();
+    QString buildAuthorizationItem();
 
 public slots:
     void onRequestCompleted(QNetworkReply *rep);

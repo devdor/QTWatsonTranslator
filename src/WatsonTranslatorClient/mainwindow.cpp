@@ -1,8 +1,10 @@
 #include <QDebug>
 #include <QMessageBox>
 #include <QHttpMultiPart>
-#include <QNetworkRequest>
 #include <QUrlQuery>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonArray>
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "app_settings_dialog.h"
@@ -127,35 +129,37 @@ void MainWindow::fileAppNew()
 {
     try
     {
-        QString jsonString = "{\"text\":[\"hallo welt\"],\"model_id\":\"en-es\"}";
-        QByteArray postData = QByteArray::number(jsonString.size());
-
-        QNetworkAccessManager * manager = new QNetworkAccessManager(this);
-
-        QSettings settings;
-
-        QUrlQuery params;
-        params.addQueryItem("version", settings.value("IBMSettings/VersionDate").toString());
-
-        QUrl url(settings.value("IBMSettings/ServiceUrl").toString() + "/v3/translate?" + params.query());
-        QNetworkRequest request(url);
-
-        request.setRawHeader("Content-Type", "application/json");
-        request.setRawHeader("Content-Length", postData);
-        request.setRawHeader("x-watson-learning-opt-out", "true");
-
-        QString concatenated = "apikey:"+settings.value("IBMSettings/AccessToken").toString();
-        QByteArray data = concatenated.toLocal8Bit().toBase64();
-        QString headerData = "Basic " + data;
-        request.setRawHeader("Authorization", headerData.toLocal8Bit());
-
-        connect(manager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onRequestCompleted(QNetworkReply *)));
-        manager->post(request, jsonString.toUtf8());
+        this->readLanguageList();
+        //this->translate("Pull requests let you tell others about changes you've pushed to a branch");
     }
     catch (const std::exception& exc)
     {
         qDebug() << "EXCEPTION in fileAppNew: " << exc.what() << endl;
     }
+}
+
+void MainWindow::translate(const QString &value)
+{
+    QString jsonString = "{\"text\":[\"" + value + "\"],\"model_id\":\"en-de\"}";
+    QByteArray postData = QByteArray::number(jsonString.size());
+
+    QNetworkAccessManager * manager = new QNetworkAccessManager(this);
+
+    QSettings settings;
+
+    QUrlQuery params;
+    params.addQueryItem("version", settings.value("IBMSettings/VersionDate").toString());
+
+    QUrl url(settings.value("IBMSettings/ServiceUrl").toString() + "/v3/translate?" + params.query());
+    QNetworkRequest request(url);
+
+    request.setRawHeader("Content-Type", "application/json");
+    request.setRawHeader("Content-Length", postData);
+    request.setRawHeader("x-watson-learning-opt-out", "true");
+    request.setRawHeader("Authorization", this->buildAuthorizationItem().toLocal8Bit());
+
+    connect(manager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onRequestCompleted(QNetworkReply *)));
+    manager->post(request, jsonString.toUtf8());
 }
 
 void MainWindow::onRequestCompleted(QNetworkReply *rep)
@@ -180,11 +184,64 @@ void MainWindow::onRequestCompleted(QNetworkReply *rep)
     }
 }
 
-void MainWindow::insertRow(const QString &text, const QString &translation)
+QStringList MainWindow::readLanguageList()
+{
+    QSettings settings;
+
+    QUrlQuery params;
+    params.addQueryItem("version", settings.value("IBMSettings/VersionDate").toString());
+
+    QUrl url(settings.value("IBMSettings/ServiceUrl").toString() + "/v3/identifiable_languages?" + params.query());
+    QNetworkRequest request(url);
+
+    request.setRawHeader("Authorization", this->buildAuthorizationItem().toLocal8Bit());
+
+    QNetworkAccessManager * manager = new QNetworkAccessManager(this);
+    QNetworkReply *reply = manager->get(request);
+
+    QStringList languageList;
+    connect(reply, &QNetworkReply::finished, [=]() {
+
+        if(reply->error() == QNetworkReply::NoError)
+        {
+            QByteArray bts = reply->readAll();
+            if(bts.length() > 0)
+            {
+                QString str(bts);
+
+                QJsonDocument jsonResponse = QJsonDocument::fromJson(bts);
+                QJsonObject jsonObject = jsonResponse.object();
+                QJsonArray jsonArray = jsonObject["languages"].toArray();
+                foreach (const QJsonValue & value, jsonArray)
+                {
+                    QJsonObject obj = value.toObject();
+                }
+
+                QMessageBox::information(this, QCoreApplication::applicationName(),str, "ok");
+            }
+        }
+        else // handle error
+        {
+          qDebug() << reply->errorString();
+        }
+    });
+
+    return languageList;
+}
+
+QString MainWindow::buildAuthorizationItem()
+{
+    QSettings settings;
+    QString concatenated = "apikey:"+settings.value("IBMSettings/AccessToken").toString();
+    QByteArray data = concatenated.toLocal8Bit().toBase64();
+    return ("Basic " + data);
+}
+
+void MainWindow::insertRow(const QString &value, const QString &translation)
 {
     ui->tableWidget->insertRow(ui->tableWidget->rowCount());
     int nRow = ui->tableWidget->rowCount() - 1;
     ui->tableWidget->setItem(nRow, 0, new QTableWidgetItem(QDateTime::currentDateTime().time().toString()));
-    ui->tableWidget->setItem(nRow, 1, new QTableWidgetItem(text));
+    ui->tableWidget->setItem(nRow, 1, new QTableWidgetItem(value));
     ui->tableWidget->setItem(nRow, 2, new QTableWidgetItem(translation));
 }
