@@ -24,25 +24,21 @@ private:
     Ui::MainWindow *ui;
 
     QMenu *fileMenu, *helpMenu;
-    QAction *appNewAct, *appSettingsAct, *appExitAct, *appAboutAct;
+    QAction *appSettingsAct, *appExitAct, *appAboutAct;
 
     void createActions();
     void createMenus();
-
-    void fileAppNew();
     void fileAppSettings();
     void fileAppAbout();
     void fileAppExit();    
-    void insertRow(const QString &value, const QString &translation);
+    void insertRow(int numWordsCount, int numCharactersCount);
 
-    void translate(const QString &value);
-
-    QVector<QPair<QString,QString>> m_languageList;
     void readLanguageList();
     QString buildAuthorizationItem();
+    void translate(const QString &value, const QString &fromLang, const QString &dstLang);
 
-public slots:
-    void onRequestCompleted(QNetworkReply *rep);
+private slots:
+    void onTranslate();
 };
 
 #endif // MAINWINDOW_H

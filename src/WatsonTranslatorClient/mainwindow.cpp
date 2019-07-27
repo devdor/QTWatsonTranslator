@@ -23,10 +23,12 @@ MainWindow::MainWindow(QWidget *parent) :
     this->createMenus();
 
     QStringList colHeaderList;
-    colHeaderList << "Created" << "Text" << "Translation";
+    colHeaderList << "Created" << "Words count" << "Characters count";
     ui->tableWidget->setColumnCount(3);
     ui->tableWidget->setHorizontalHeaderLabels(colHeaderList);
     ui->tableWidget->horizontalHeader()->setStretchLastSection(true);
+
+    this->connect(this->ui->btnTranslate, SIGNAL(clicked()), this, SLOT(onTranslate()));
 }
 
 MainWindow::~MainWindow()
@@ -36,14 +38,9 @@ MainWindow::~MainWindow()
 
 void MainWindow::createActions()
 {
-    this->appNewAct = new QAction(tr("&New"), this);
-    this->appNewAct->setShortcuts(QKeySequence::New);
-    this->appNewAct->setStatusTip(tr("Post a new request"));
-    this->appNewAct->setIcon(QIcon::fromTheme("document-new"));
-    connect(this->appNewAct, &QAction::triggered, this, &MainWindow::fileAppNew);
-
     this->appSettingsAct = new QAction(tr("&Settings"), this);
     this->appSettingsAct->setStatusTip(tr("Application settings"));
+    this->appSettingsAct->setIcon(QIcon::fromTheme("configure_project"));
     connect(this->appSettingsAct, &QAction::triggered, this, &MainWindow::fileAppSettings);
 
     this->appExitAct = new QAction(tr("&Exit"), this);
@@ -59,14 +56,13 @@ void MainWindow::createActions()
 void MainWindow::createMenus()
 {
     this->fileMenu = this->menuBar()->addMenu(tr("&File"));
-    this->fileMenu->addAction(this->appNewAct);
     this->fileMenu->addAction(this->appSettingsAct);
     this->fileMenu->addAction(this->appExitAct);
 
     this->helpMenu = this->menuBar()->addMenu(tr("Help"));
     this->helpMenu->addAction(this->appAboutAct);
 
-    ui->mainToolBar->addAction(this->appNewAct);
+    ui->mainToolBar->addAction(this->appSettingsAct);
 }
 
 void MainWindow::fileAppSettings()
@@ -89,6 +85,8 @@ void MainWindow::fileAppSettings()
             settings.setValue("IBMSettings/ServiceUrl", appSettingsDlg->GetServiceUrl());
             settings.setValue("IBMSettings/VersionDate", appSettingsDlg->GetVersionDate());
             settings.setValue("IBMSettings/AccessToken", appSettingsDlg->GetAccessToken());
+
+            this->readLanguageList();
             qDebug() << "appSettingsDlg accepted";
         }
     }
@@ -125,14 +123,13 @@ void MainWindow::fileAppAbout()
     }
 }
 
-void MainWindow::fileAppNew()
+void MainWindow::onTranslate()
 {
     try
     {
-        if(this->m_languageList.isEmpty())
-            this->readLanguageList();
-
-        this->translate("Pull requests let you tell others about changes you've pushed to a branch");
+        this->translate(this->ui->txtLangIn->toPlainText(),
+                        this->ui->cmbLangIn->currentData().toString(),
+                        this->ui->cmbLangOut->currentData().toString());
     }
     catch (const std::exception& exc)
     {
@@ -140,9 +137,9 @@ void MainWindow::fileAppNew()
     }
 }
 
-void MainWindow::translate(const QString &value)
+void MainWindow::translate(const QString &value, const QString &fromLang, const QString &dstLang)
 {
-    QString jsonString = "{\"text\":[\"" + value + "\"],\"model_id\":\"en-de\"}";
+    QString jsonString = "{\"text\":[\"" + value + "\"],\"model_id\":\"" + fromLang +"-" + dstLang +"\"}";
     QByteArray postData = QByteArray::number(jsonString.size());
 
     QNetworkAccessManager * manager = new QNetworkAccessManager(this);
@@ -160,30 +157,33 @@ void MainWindow::translate(const QString &value)
     request.setRawHeader("x-watson-learning-opt-out", "true");
     request.setRawHeader("Authorization", this->buildAuthorizationItem().toLocal8Bit());
 
-    connect(manager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onRequestCompleted(QNetworkReply *)));
-    manager->post(request, jsonString.toUtf8());
-}
+    //connect(manager, SIGNAL(finished(QNetworkReply *)), this, SLOT(onRequestCompleted(QNetworkReply *)));
+    QNetworkReply *reply = manager->post(request, jsonString.toUtf8());
 
-void MainWindow::onRequestCompleted(QNetworkReply *rep)
-{
-    try
-    {
-        QByteArray bts = rep->readAll();
-        if(bts.length() > 0)
+    connect(reply, &QNetworkReply::finished, [=]() {
+        if(reply->error() == QNetworkReply::NoError)
         {
-            QString str(bts);
-            QMessageBox::information(this, QCoreApplication::applicationName(),str, "ok");
-            this->statusBar()->showMessage(QString("Received %1 bytes received").arg(bts.length()));
+            QByteArray bts = reply->readAll();
+            if(bts.length() > 0)
+            {
+                QJsonDocument jsonResponse = QJsonDocument::fromJson(bts);
+                QJsonObject jsonObject = jsonResponse.object();
+                this->insertRow(jsonObject.value("word_count").toInt(), jsonObject.value("character_count").toInt());
+
+                QJsonArray jsonArray = jsonObject["translations"].toArray();
+                foreach (const QJsonValue & value, jsonArray)
+                {
+                    QJsonObject obj = value.toObject();
+                    this->ui->txtLangOut->setPlainText(
+                                obj.value("translation").toString());
+                }
+            }
         }
-        else
+        else // handle error
         {
-            this->statusBar()->showMessage("Received empty response");
+          qDebug() << reply->errorString();
         }
-    }
-    catch (const std::exception& exc)
-    {
-        qDebug() << "EXCEPTION in onRequestCompleted: " << exc.what() << endl;
-    }
+    });
 }
 
 void MainWindow::readLanguageList()
@@ -201,7 +201,6 @@ void MainWindow::readLanguageList()
     QNetworkAccessManager * manager = new QNetworkAccessManager(this);
     QNetworkReply *reply = manager->get(request);
 
-    this->m_languageList.clear();
     connect(reply, &QNetworkReply::finished, [=]() {
 
         if(reply->error() == QNetworkReply::NoError)
@@ -213,14 +212,29 @@ void MainWindow::readLanguageList()
                 QJsonObject jsonObject = jsonResponse.object();
                 QJsonArray jsonArray = jsonObject["languages"].toArray();
 
+                QVector<QPair<QString,QString>> languageList;
                 foreach (const QJsonValue & value, jsonArray)
                 {
                     QJsonObject obj = value.toObject();
-                    this->m_languageList.append(
+                    languageList.append(
                                 QPair<QString, QString>(
                                     obj.value("language").toString(),
                                     obj.value("name").toString()));
                 }
+
+                this->ui->cmbLangIn->clear();
+                this->ui->cmbLangOut->clear();
+
+                QPair<QString,QString> pair;
+                foreach(pair, languageList)
+                {
+                    QString displayText = pair.second + " (" + pair.first + ")";
+                    this->ui->cmbLangIn->addItem(displayText, pair.first);
+                    this->ui->cmbLangOut->addItem(displayText, pair.first);
+                }
+
+                this->ui->cmbLangIn->setCurrentIndex(this->ui->cmbLangIn->findData("en"));
+                this->ui->cmbLangOut->setCurrentIndex(this->ui->cmbLangOut->findData("de"));
             }
         }
         else // handle error
@@ -237,12 +251,11 @@ QString MainWindow::buildAuthorizationItem()
     QByteArray data = concatenated.toLocal8Bit().toBase64();
     return ("Basic " + data);
 }
-
-void MainWindow::insertRow(const QString &value, const QString &translation)
+void MainWindow::insertRow(int numWordsCount, int numCharactersCount)
 {
     ui->tableWidget->insertRow(ui->tableWidget->rowCount());
     int nRow = ui->tableWidget->rowCount() - 1;
     ui->tableWidget->setItem(nRow, 0, new QTableWidgetItem(QDateTime::currentDateTime().time().toString()));
-    ui->tableWidget->setItem(nRow, 1, new QTableWidgetItem(value));
-    ui->tableWidget->setItem(nRow, 2, new QTableWidgetItem(translation));
+    ui->tableWidget->setItem(nRow, 1, new QTableWidgetItem(QString::number(numWordsCount)));
+    ui->tableWidget->setItem(nRow, 2, new QTableWidgetItem(QString::number(numCharactersCount)));
 }
